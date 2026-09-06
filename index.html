@@ -14,8 +14,6 @@
     --ink: #1c1c1e;
     --ink-2: #8a8a8e;
     --done: #34a853;
-    --half: #e8a13a;
-    --stuck: #c0564b;
     --line: #e8e6e1;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -89,23 +87,26 @@
   }
   .entry:last-child { border-bottom: none; }
   .dot {
-    width: 10px; height: 10px;
+    width: 12px; height: 12px;
     border-radius: 50%;
-    margin-top: 7px;
+    margin-top: 6px;
     flex-shrink: 0;
   }
-  .dot.done  { background: var(--done); }
-  .dot.half  { background: var(--half); }
-  .dot.stuck { background: var(--stuck); }
-  .dot.open  { background: transparent; border: 2px solid #c7c7cc; width: 12px; height: 12px; margin-top: 6px; }
+  .dot.done { background: var(--done); }
+  .dot.todo { background: transparent; border: 2px solid #c7c7cc; }
   .body { flex: 1; min-width: 0; }
   .text { font-size: 16px; line-height: 1.45; word-break: break-word; }
+  .note {
+    font-size: 14px;
+    color: var(--ink-2);
+    margin-top: 4px;
+    line-height: 1.4;
+    word-break: break-word;
+    cursor: pointer;
+  }
   .meta { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
-  .status-label { cursor: pointer; }
-  .status-label.done  { color: var(--done); }
-  .status-label.half  { color: var(--half); }
-  .status-label.stuck { color: var(--stuck); }
-  .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .add-note { cursor: pointer; color: #b5b5ba; }
+  .actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .actions button {
     border: 1px solid var(--line);
     background: #fff;
@@ -116,6 +117,26 @@
     cursor: pointer;
   }
   .actions button:active { background: var(--bg); }
+  .note-edit { display: flex; gap: 6px; margin-top: 8px; }
+  .note-edit input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    outline: none;
+  }
+  .note-edit button {
+    border: none;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 6px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
   .del {
     border: none; background: none; color: #c7c7cc; font-size: 18px;
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
@@ -191,17 +212,21 @@
   var $ = function (id) { return document.getElementById(id); };
   var listEl = $('list'), inputEl = $('input');
 
-  var STATUS_LABEL = { open: '待做', done: '做到了', half: '做了一半', stuck: '卡住了' };
-
   function load() {
     var d;
     try { d = JSON.parse(localStorage.getItem(KEY)) || {}; }
     catch (e) { d = {}; }
-    // 舊數據遷移:去掉 kind 欄位,統一成一種記錄
+    // 舊數據遷移:統一成 { text, done, note? }
     for (var k in d) {
       d[k].forEach(function (e) {
+        if ('status' in e) {
+          e.done = e.status !== 'open';
+          if (e.status === 'half') e.note = '做了一半';
+          if (e.status === 'stuck') e.note = '卡住了';
+          delete e.status;
+        }
         delete e.kind;
-        if (!e.status) e.status = 'done';
+        if (!('done' in e)) e.done = true;
       });
     }
     return d;
@@ -214,7 +239,7 @@
 
   function entries(d) { return data[dayKey(d)] || []; }
 
-  function addEntry(text, status) {
+  function addEntry(text, done) {
     text = text.trim();
     if (!text) return;
     var k = dayKey(current);
@@ -222,20 +247,17 @@
     data[k].push({
       id: Date.now() + '' + Math.floor(Math.random() * 1000),
       text: text,
-      status: status,   // open | done | half | stuck
+      done: done,
       ts: Date.now()
     });
     save();
     render();
   }
 
-  function setStatus(k, id, status) {
+  function findEntry(k, id) {
     var arr = data[k] || [];
-    for (var i = 0; i < arr.length; i++) {
-      if (arr[i].id === id) { arr[i].status = status; break; }
-    }
-    save();
-    render();
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
+    return null;
   }
 
   function removeEntry(k, id) {
@@ -265,6 +287,25 @@
     var d = new Date(ts);
     return pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
+
+  // 在行內放一個輸入框,提交後作為這條記錄的結果(note)
+  function noteEditor(k, e, onDone) {
+    var wrap = document.createElement('div');
+    wrap.className = 'note-edit';
+    wrap.innerHTML = '<input type="text" placeholder="結果怎麼樣?一句話寫下來"><button>記下</button>';
+    var inp = wrap.querySelector('input');
+    if (e.note) inp.value = e.note;
+    function submit() {
+      e.note = inp.value.trim();
+      if (!e.note) delete e.note;
+      save();
+      onDone();
+    }
+    wrap.querySelector('button').addEventListener('click', submit);
+    inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') submit(); });
+    return wrap;
+  }
+
   function render() {
     var isToday = dayKey(current) === dayKey(today());
     $('dateText').textContent = (current.getMonth() + 1) + ' 月 ' + current.getDate() + ' 日';
@@ -286,41 +327,54 @@
       var row = document.createElement('div');
       row.className = 'entry';
 
-      var metaHtml = '<div class="meta">' + fmtTime(e.ts);
-      if (e.status !== 'open') {
-        metaHtml += ' · <span class="status-label ' + e.status + '">' + STATUS_LABEL[e.status] + '</span>';
-      }
-      metaHtml += '</div>';
-
-      var actionsHtml = '';
-      if (e.status === 'open') {
-        actionsHtml =
-          '<div class="actions">' +
-            '<button data-s="done">做成了</button>' +
-            '<button data-s="half">做了一半</button>' +
-            '<button data-s="stuck">卡住了</button>' +
-          '</div>';
-      }
+      var noteHtml = e.done && e.note ? '<div class="note"></div>' : '';
+      var metaExtra = (e.done && !e.note) ? ' · <span class="add-note">+ 寫結果</span>' : '';
 
       row.innerHTML =
-        '<span class="dot ' + e.status + '"></span>' +
-        '<div class="body"><div class="text"></div>' + metaHtml + actionsHtml + '</div>' +
+        '<span class="dot ' + (e.done ? 'done' : 'todo') + '"></span>' +
+        '<div class="body">' +
+          '<div class="text"></div>' +
+          noteHtml +
+          '<div class="meta">' + fmtTime(e.ts) + metaExtra + '</div>' +
+          '<div class="slot"></div>' +
+        '</div>' +
         '<button class="del" aria-label="刪除">×</button>';
       row.querySelector('.text').textContent = e.text;
+      var noteEl = row.querySelector('.note');
+      if (noteEl) noteEl.textContent = '→ ' + e.note;
+      var slot = row.querySelector('.slot');
 
       row.querySelector('.del').addEventListener('click', function () {
         if (confirm('刪掉這一條?')) removeEntry(k, e.id);
       });
-      var label = row.querySelector('.status-label');
-      if (label) {
-        label.addEventListener('click', function () { setStatus(k, e.id, 'open'); });
-      }
-      var btns = row.querySelectorAll('.actions button');
-      for (var i = 0; i < btns.length; i++) {
-        btns[i].addEventListener('click', function () {
-          setStatus(k, e.id, this.getAttribute('data-s'));
+
+      if (!e.done) {
+        // 待做:一個「做了」按鈕,點了之後自己寫結果,寫什麼都算做了
+        var btn = document.createElement('button');
+        btn.textContent = '做了';
+        btn.style.cssText = 'border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;padding:4px 12px;color:var(--ink);cursor:pointer;margin-top:8px;';
+        btn.addEventListener('click', function () {
+          slot.innerHTML = '';
+          slot.appendChild(noteEditor(k, e, function () {
+            e.done = true;
+            save();
+            render();
+          }));
+          slot.querySelector('input').focus();
         });
+        slot.appendChild(btn);
+      } else {
+        // 已做:點結果文字或「+ 寫結果」可以補寫/修改
+        var edit = function () {
+          slot.innerHTML = '';
+          slot.appendChild(noteEditor(k, e, render));
+          slot.querySelector('input').focus();
+        };
+        if (noteEl) noteEl.addEventListener('click', edit);
+        var addNote = row.querySelector('.add-note');
+        if (addNote) addNote.addEventListener('click', edit);
       }
+
       card.appendChild(row);
     });
 
@@ -338,10 +392,10 @@
     render();
   });
 
-  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, 'open'); inputEl.value = ''; inputEl.focus(); });
-  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, 'done'); inputEl.value = ''; inputEl.focus(); });
+  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); inputEl.value = ''; inputEl.focus(); });
+  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); inputEl.value = ''; inputEl.focus(); });
   inputEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { addEntry(inputEl.value, 'done'); inputEl.value = ''; }
+    if (e.key === 'Enter') { addEntry(inputEl.value, true); inputEl.value = ''; }
   });
 
   $('btnExport').addEventListener('click', function () {
