@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#fafbfc">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-title" content="Dot">
 <title>Dot</title>
 <style>
   :root {
-    --bg: #fafbfc;
-    --card: #ffffff;
-    --ink: #393451;
-    --ink-2: #746780;
-    --done: #7964bb;
-    --line: #eeedf2;
-    --accent: #7253ac;
-    --lavender: #f1edf7;
-    --peach: #f8f1e9;
-    --peach-ink: #805032;
+    --bg: #ffffff;
+    --ink: #253e4a;
+    --ink-2: #637780;
+    --line: #dfe8ec;
+    --accent: #deed82;
+    --accent-ink: #34451b;
+    --done: #367d9c;
+    --blue-soft: #edf5f8;
+    --surface: #f5f8f9;
+    --open: #8fa4ae;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
@@ -37,88 +37,110 @@
   button, input { font: inherit; }
   button { cursor: pointer; }
   button:focus-visible, .entry:focus-visible, .date-label:focus-within {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--done);
     outline-offset: 3px;
   }
-  header { padding: calc(env(safe-area-inset-top) + 22px) 24px 18px; }
-  .brand { display: flex; align-items: center; gap: 7px; margin: 0 0 24px; font-size: 24px; font-weight: 650; letter-spacing: -.8px; }
-  .brand::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--done); }
-  .date-nav { display: flex; align-items: center; justify-content: space-between; }
-  .date-nav button {
-    border: none;
-    border-radius: 50%;
-    background: var(--lavender);
-    font-size: 26px;
-    color: var(--accent);
-    width: 44px;
-    height: 44px;
-  }
-  .date-label { font-size: 23px; font-weight: 600; position: relative; cursor: pointer; text-align: center; }
-  .date-label .sub { display: block; margin-top: 5px; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+  header { padding: calc(env(safe-area-inset-top) + 24px) 28px 0; flex-shrink: 0; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 30px; }
+  .brand { display: flex; align-items: baseline; gap: 5px; margin: 0; font-size: 27px; font-weight: 650; letter-spacing: -1px; }
+  .brand::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .date-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .date-controls { display: flex; gap: 4px; }
+  .date-nav button { border: none; border-radius: 50%; background: transparent; font-size: 25px; color: var(--ink-2); width: 44px; height: 44px; }
+  .date-label { font-size: 22px; font-weight: 600; position: relative; cursor: pointer; }
+  .date-label .sub { display: block; margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--ink-2); }
   #datePicker { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
-  .stats { margin-top: 18px; font-size: 12px; color: var(--ink-2); text-align: center; }
-  .stats b { color: var(--ink); font-weight: 600; }
-  .legend { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
-  .legend .dot { width: 9px; height: 9px; margin: 0 0 0 12px; }
+  .stats { font-size: 12px; color: var(--ink-2); text-align: right; line-height: 1.6; }
+  .stats b { color: var(--ink); font-weight: 500; }
+  .list-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .list-heading h2 { margin: 0; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2); }
+  .legend .dot { width: 7px; height: 7px; margin: 0 0 0 12px; }
   .legend .dot:first-child { margin-left: 0; }
 
-  #list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 20px 20px; }
+  #list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px 24px; }
   .empty { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: clamp(32px, 12vh, 100px); line-height: 1.8; }
-  .empty::before { content: ''; display: block; width: 40px; height: 40px; margin: 0 auto 20px; border: 9px solid var(--lavender); border-radius: 50%; background: var(--peach); }
-  .card { background: var(--card); border-radius: 22px; padding: 0 16px; box-shadow: 0 4px 24px rgba(114,83,172,.04); }
-  .entry { display: flex; align-items: flex-start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .empty::before { content: ''; display: block; width: 28px; height: 28px; margin: 0 auto 24px; border-radius: 50%; background: var(--accent); }
+  .entries { margin: 0; padding: 0; list-style: none; }
+  .entry { display: flex; align-items: flex-start; gap: 16px; padding: 22px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
   .entry:last-child { border-bottom: none; }
-  .entry:active { background: var(--lavender); }
-  .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .entry:active { background: var(--surface); }
+  .dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
   .dot.done { background: var(--done); }
-  .dot.todo { background: transparent; border: 2px solid #b39473; }
+  .dot.todo { background: transparent; border: 1.5px solid var(--open); }
+  .entry > .dot.done { box-shadow: 0 0 0 5px var(--blue-soft); }
+  .entry.recorded > .dot { animation: settle 240ms ease-out; }
+  @keyframes settle { from { transform: scale(.6); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .entry.recorded > .dot { animation: none; } }
   .body { flex: 1; min-width: 0; }
-  .topline { display: flex; align-items: flex-start; gap: 8px; }
-  .text { flex: 1; font-size: 16px; line-height: 1.5; word-break: break-word; }
-  .time { font-size: 11px; color: var(--ink-2); margin-top: 4px; flex-shrink: 0; }
-  .note { font-size: 14px; color: var(--ink-2); margin-top: 7px; line-height: 1.6; word-break: break-word; }
-  .del { border: none; background: none; color: var(--ink-2); font-size: 18px; min-width: 32px; min-height: 32px; margin: -4px -8px 0 0; padding: 0; flex-shrink: 0; }
+  .topline { display: flex; align-items: baseline; gap: 10px; }
+  .text { flex: 1; font-size: 16px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+  .time { font-size: 11px; color: var(--ink-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .note { font-size: 14px; color: var(--ink-2); margin-top: 6px; line-height: 1.7; overflow-wrap: anywhere; }
+  .del { border: none; background: none; color: var(--ink-2); font-size: 18px; min-width: 32px; min-height: 44px; margin: -9px -8px 0 -8px; padding: 0; flex-shrink: 0; }
 
   /* 居中懸浮窗口:不錨定屏幕底部,鍵盤彈出時只需在剩餘可視區域重新居中,
      位移很小;top/height 由 JS 跟隨 visualViewport 設置 */
-  #overlay { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; background: rgba(65,47,91,.18); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  #overlay { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; background: rgba(37,62,74,.2); display: flex; align-items: center; justify-content: center; z-index: 10; }
   #overlay[hidden] { display: none; }
-  .sheet { background: var(--card); width: min(360px, 88%); max-height: calc(100% - 24px); overflow-y: auto; border-radius: 24px; padding: 24px; box-shadow: 0 12px 48px rgba(65,47,91,.12); }
-  .sheet-text { font-size: 18px; font-weight: 600; line-height: 1.4; margin-bottom: 16px; word-break: break-word; }
-  #sheetInput { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 13px 12px; background: var(--bg); color: var(--ink); font-size: 16px; outline: none; }
-  #sheetInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--lavender); }
+  .sheet { background: var(--bg); width: min(380px, 88%); max-height: calc(100% - 24px); overflow-y: auto; border-radius: 22px; padding: 24px; box-shadow: 0 16px 56px rgba(37,62,74,.14); }
+  .sheet-text { font-size: 18px; font-weight: 600; line-height: 1.4; margin-bottom: 20px; overflow-wrap: anywhere; }
+  #sheetInput { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 14px 12px; background: var(--surface); color: var(--ink); font-size: 16px; outline: none; }
+  #sheetInput:focus { border-color: var(--done); box-shadow: 0 0 0 3px var(--blue-soft); }
   #sheetInput::placeholder { color: var(--ink-2); }
-  .sheet-feedback { min-height: 18px; margin-top: 10px; color: var(--accent); font-size: 12px; }
-  .sheet-btns { display: flex; gap: 10px; margin-top: 14px; }
-  .sheet-btns button { flex: 1; border: none; border-radius: 12px; padding: 13px 0; font-size: 15px; }
-  #sheetCancel { background: var(--lavender); color: var(--accent); }
-  #sheetOk { background: var(--accent); color: #fff; }
+  .sheet-feedback { min-height: 18px; margin-top: 10px; color: var(--done); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .sheet-btns { display: flex; gap: 10px; margin-top: 16px; }
+  .sheet-btns button { flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 15px; font-weight: 500; }
+  #sheetCancel { background: var(--surface); color: var(--ink-2); }
+  #sheetOk { background: var(--accent); color: var(--accent-ink); }
   #sheetUndone { display: block; margin: 12px auto 0; padding: 10px; border: none; background: none; color: var(--ink-2); font-size: 13px; }
 
-  footer { padding: 14px 20px calc(env(safe-area-inset-bottom) + 10px); }
+  footer { padding: 18px 28px calc(env(safe-area-inset-bottom) + 8px); flex-shrink: 0; background: var(--bg); }
   .add-btns { display: flex; gap: 12px; }
-  .add-btns button { flex: 1; border: none; border-radius: 18px; padding: 17px 0; font-size: 16px; font-weight: 500; }
-  #btnPlan { background: var(--peach); color: var(--peach-ink); }
-  #btnDone { background: var(--lavender); color: var(--accent); }
+  .add-btns button { border: 1px solid transparent; border-radius: 18px; padding: 17px 12px; font-size: 16px; font-weight: 500; }
+  #btnPlan { flex: 1; background: var(--bg); border-color: var(--line); color: var(--ink-2); }
+  #btnDone { flex: 1.5; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; gap: 10px; }
+  #btnDone::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
   .tools { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 8px; }
-  .tools button { border: none; background: none; color: var(--ink-2); font-size: 12px; padding: 10px 8px; }
+  .tools button { border: none; background: none; color: var(--ink-2); font-size: 11px; padding: 10px 8px; }
+  @media (hover: hover) {
+    .entry:hover, .date-nav button:hover { background: var(--surface); }
+    #btnPlan:hover, #sheetCancel:hover { background: var(--blue-soft); }
+    #btnDone:hover, #sheetOk:hover { filter: brightness(.97); }
+  }
+  @media (max-width: 360px) {
+    header { padding-left: 20px; padding-right: 20px; }
+    #list, footer { padding-left: 20px; padding-right: 20px; }
+    .entry { gap: 12px; }
+  }
+  @media (max-height: 600px) {
+    .brand-row { margin-bottom: 16px; }
+    .list-heading { margin-top: 16px; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1 class="brand">Dot</h1>
+  <div class="brand-row">
+    <h1 class="brand">Dot</h1>
+    <div class="stats" id="stats"></div>
+  </div>
   <div class="date-nav">
-    <button id="prevDay" aria-label="前一天">‹</button>
     <div class="date-label">
       <span id="dateText"></span>
       <span class="sub" id="weekText"></span>
       <input type="date" id="datePicker" aria-label="選擇日期">
     </div>
-    <button id="nextDay" aria-label="後一天">›</button>
+    <div class="date-controls">
+      <button id="prevDay" aria-label="前一天">‹</button>
+      <button id="nextDay" aria-label="後一天">›</button>
+    </div>
   </div>
-  <div class="stats" id="stats"></div>
-  <div class="legend"><span class="dot todo" aria-hidden="true"></span>未做<span class="dot done" aria-hidden="true"></span>已做</div>
+  <div class="list-heading">
+    <h2>記錄</h2>
+    <div class="legend"><span class="dot todo" aria-hidden="true"></span>未做<span class="dot done" aria-hidden="true"></span>已做</div>
+  </div>
 </header>
 
 <main id="list" aria-label="當日記錄"></main>
@@ -153,6 +175,7 @@
   var KEY = 'wins.v1';
   var data = load();
   var current = today();
+  var recordedId = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var listEl = $('list');
@@ -201,6 +224,7 @@
     if (done) e.doneTs = now;
     data[k].push(e);
     save();
+    recordedId = done ? e.id : null;
     render();
     scrollToBottom();
     return true;
@@ -278,6 +302,7 @@
       if (!e.done) e.doneTs = Date.now(); // 時間 = 標記為做了的那一刻
       e.done = true;
       save();
+      recordedId = e.id;
       closeSheet();
       render();
     } else if (sheetMode) {
@@ -342,12 +367,12 @@
       return;
     }
     var k = dayKey(current);
-    var card = document.createElement('div');
-    card.className = 'card';
+    var entryList = document.createElement('ul');
+    entryList.className = 'entries';
 
     arr.forEach(function (e) {
-      var row = document.createElement('div');
-      row.className = 'entry';
+      var row = document.createElement('li');
+      row.className = 'entry' + (e.id === recordedId ? ' recorded' : '');
       row.tabIndex = 0;
       row.setAttribute('aria-label', (e.done ? '已做：' : '未做：') + e.text + '，編輯結果');
 
@@ -377,11 +402,12 @@
         if (confirm('刪掉這一條?')) removeEntry(k, e.id);
       });
 
-      card.appendChild(row);
+      entryList.appendChild(row);
     });
 
     listEl.innerHTML = '';
-    listEl.appendChild(card);
+    listEl.appendChild(entryList);
+    recordedId = null;
   }
 
   // ---- 底部兩個按鈕:唯一的輸入入口 ----
