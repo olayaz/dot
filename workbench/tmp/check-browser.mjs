@@ -7,23 +7,31 @@ const browser = await chromium.launch({ channel: 'chrome' });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
+  const typeIntoSheet = async text => {
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'sheetInput');
+    await page.keyboard.insertText(text);
+  };
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('http://127.0.0.1:8080');
   await page.getByRole('button', { name: '寫計劃', exact: true }).click();
-  await page.getByRole('dialog').getByRole('textbox').fill('聯絡供應商');
+  await typeIntoSheet('聯絡供應商');
   await page.getByRole('button', { name: '新增', exact: true }).click();
-  await page.getByRole('dialog').getByRole('textbox').fill('整理讀書筆記');
+  await typeIntoSheet('整理讀書筆記');
   await page.getByRole('button', { name: '新增', exact: true }).click();
   await page.getByRole('button', { name: '關閉', exact: true }).click();
   assert.equal(await page.locator('.entry').count(), 2);
+  const compactRow = await page.locator('.entry').first().boundingBox();
+  assert.ok(compactRow.height >= 44 && compactRow.height <= 50, 'Single-line entries should stay compact and tappable');
+  const deleteButton = await page.locator('.entry .del').first().boundingBox();
+  assert.ok(deleteButton.y >= compactRow.y && deleteButton.y + deleteButton.height <= compactRow.y + compactRow.height);
   await page.locator('.entry').first().click();
-  await page.getByRole('dialog').getByRole('textbox').fill('沒有聯絡上，留了訊息。等對方回覆。');
+  await typeIntoSheet('沒有聯絡上，留了訊息。等對方回覆。');
   await page.getByRole('button', { name: '儲存', exact: true }).click();
   assert.equal(await page.locator('.entry > .dot.done').count(), 1);
   assert.equal(await page.locator('.entry.recorded > .dot').evaluate(el => getComputedStyle(el).animationName), 'none');
   await page.getByRole('button', { name: '寫記錄', exact: true }).click();
-  await page.getByRole('dialog').getByRole('textbox').fill('出門走了二十分鐘');
+  await typeIntoSheet('出門走了二十分鐘');
   await page.getByRole('button', { name: '新增', exact: true }).click();
   assert.match(await page.getByRole('status').textContent(), /已新增：出門走了二十分鐘/);
   await page.screenshot({ path: fileURLToPath(new URL('dot-dialog.png', import.meta.url)) });
@@ -40,7 +48,7 @@ try {
   }
   await page.setViewportSize({ width: 320, height: 568 });
   await page.getByRole('button', { name: '寫記錄', exact: true }).click();
-  await page.getByRole('dialog').getByRole('textbox').fill('這是一段比較長的記錄，用來確認小螢幕下內容換行和輸入後的回饋不會超出視窗。'.repeat(3));
+  await typeIntoSheet('這是一段比較長的記錄，用來確認小螢幕下內容換行和輸入後的回饋不會超出視窗。'.repeat(3));
   await page.getByRole('button', { name: '新增', exact: true }).click();
   assert.equal(await page.locator('.sheet').evaluate(el => el.scrollWidth <= el.clientWidth), true);
   await page.getByRole('button', { name: '關閉', exact: true }).click();

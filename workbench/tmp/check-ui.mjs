@@ -25,29 +25,32 @@ class Element {
   setAttribute(name, value) { this[name] = value; }
   appendChild(child) { this.children.push(child); }
   querySelector(selector) { return this.parts[selector] ||= new Element(); }
-  focus() {}
-  blur() {}
+  focus(options) { this.focused = true; this.focusOptions = options; }
+  blur() { this.focused = false; }
   click() { this.listeners.click?.call(this, { target: this }); }
 }
 
 function boot(initial = {}) {
   const elements = Object.fromEntries(ids.map(id => [id, new Element()]));
   let stored = JSON.stringify(initial);
+  const timers = [];
   vm.runInNewContext(script, {
     document: { getElementById: id => elements[id], createElement: () => new Element() },
     localStorage: { getItem: () => stored, setItem: (key, value) => { assert.equal(key, 'wins.v1'); stored = value; } },
     window: {},
     requestAnimationFrame: fn => fn(),
-    setTimeout: fn => fn(),
+    setTimeout: fn => timers.push(fn),
     confirm: () => true,
     Date,
   });
-  return { elements, data: () => JSON.parse(stored) };
+  return { elements, data: () => JSON.parse(stored), flushTimers: () => timers.splice(0).forEach(fn => fn()) };
 }
 
-const { elements: el, data } = boot();
+const { elements: el, data, flushTimers } = boot();
 assert.match(el.list.innerHTML, /這天還沒有記錄/);
 el.btnPlan.click();
+assert.equal(el.sheetInput.focused, true, 'Plan input must focus synchronously, before timers run');
+assert.equal(el.sheetInput.focusOptions.preventScroll, true);
 assert.equal(el.sheetText.textContent, '寫計劃');
 assert.equal(el.sheetUndone.hidden, true);
 el.sheetOk.click();
@@ -63,7 +66,10 @@ el.sheetInput.value = '整理桌面';
 el.sheetOk.click();
 assert.equal(data()[date].length, 2);
 el.sheetCancel.click();
+flushTimers();
+assert.equal(el.sheetInput.focused, false, 'Closing must not leave a delayed focus callback');
 el.list.children[0].children[0].click();
+assert.equal(el.sheetInput.focused, true, 'Result input must focus synchronously');
 el.sheetInput.value = '沒有聯絡上，留了訊息';
 el.sheetOk.click();
 assert.equal(data()[date][0].done, true);
@@ -77,6 +83,7 @@ el.sheetUndone.click();
 assert.equal(data()[date][0].done, false);
 assert.equal(data()[date][0].note, '沒有聯絡上，留了訊息');
 el.btnDone.click();
+assert.equal(el.sheetInput.focused, true, 'Record input must focus synchronously, before timers run');
 el.sheetInput.value = '試了新食譜，沒有成功';
 el.sheetInput.listeners.keydown({ key: 'Enter', isComposing: true });
 assert.equal(data()[date].length, 2);
