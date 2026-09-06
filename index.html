@@ -97,7 +97,9 @@
   .dot.done { background: var(--done); }
   .dot.todo { background: transparent; border: 2px solid #c7c7cc; }
   .body { flex: 1; min-width: 0; }
-  .text { font-size: 16px; line-height: 1.45; word-break: break-word; }
+  .topline { display: flex; align-items: flex-start; gap: 8px; }
+  .text { flex: 1; font-size: 16px; line-height: 1.45; word-break: break-word; }
+  .time { font-size: 12px; color: var(--ink-2); margin-top: 3px; flex-shrink: 0; }
   .note {
     font-size: 14px;
     color: var(--ink-2);
@@ -105,7 +107,6 @@
     line-height: 1.4;
     word-break: break-word;
   }
-  .meta { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
   .del {
     border: none; background: none; color: #c7c7cc; font-size: 18px;
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
@@ -185,7 +186,7 @@
     font-size: 15px;
     cursor: pointer;
   }
-  .add-btns button:disabled { opacity: 0.35; }
+  .add-btns button.active { outline: 2px solid var(--ink); outline-offset: -2px; }
   #btnPlan { background: #eceef1; color: var(--ink); }
   #btnDone { background: var(--ink); color: #fff; }
   .tools {
@@ -220,15 +221,15 @@
 <div id="list"></div>
 
 <footer>
-  <input id="input" type="text" placeholder="先寫下來,再點下面的按鈕" enterkeyhint="done" autocomplete="off">
+  <input id="input" type="text" placeholder="寫下做成的事" enterkeyhint="done" autocomplete="off">
   <div class="add-btns">
-    <button id="btnPlan" disabled>記為待做</button>
-    <button id="btnDone" disabled>做到了,記一筆</button>
+    <button id="btnPlan">記為待做</button>
+    <button id="btnDone" class="active">做到了,記一筆</button>
   </div>
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
-    <span class="ver">v0.4</span>
+    <span class="ver">v0.5</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
@@ -250,6 +251,7 @@
   var KEY = 'wins.v1';
   var data = load();
   var current = today();
+  var mode = 'done'; // 'done' = 做到了,記一筆; 'plan' = 記為待做
 
   var $ = function (id) { return document.getElementById(id); };
   var listEl = $('list'), inputEl = $('input');
@@ -258,7 +260,7 @@
     var d;
     try { d = JSON.parse(localStorage.getItem(KEY)) || {}; }
     catch (e) { d = {}; }
-    // 舊數據遷移:統一成 { text, done, note? }
+    // 舊數據遷移:統一成 { text, done, note?, ts, doneTs? }
     for (var k in d) {
       d[k].forEach(function (e) {
         if ('status' in e) {
@@ -279,19 +281,28 @@
 
   function entries(d) { return data[dayKey(d)] || []; }
 
+  function scrollToBottom() {
+    requestAnimationFrame(function () { listEl.scrollTop = listEl.scrollHeight; });
+  }
+
   function addEntry(text, done) {
     text = text.trim();
-    if (!text) return;
+    if (!text) return false;
     var k = dayKey(current);
     if (!data[k]) data[k] = [];
-    data[k].push({
-      id: Date.now() + '' + Math.floor(Math.random() * 1000),
+    var now = Date.now();
+    var e = {
+      id: now + '' + Math.floor(Math.random() * 1000),
       text: text,
       done: done,
-      ts: Date.now()
-    });
+      ts: now
+    };
+    if (done) e.doneTs = now;
+    data[k].push(e);
     save();
     render();
+    scrollToBottom();
+    return true;
   }
 
   function removeEntry(k, id) {
@@ -338,6 +349,7 @@
     var e = editing.e;
     var note = $('sheetInput').value.trim();
     if (note) e.note = note; else delete e.note;
+    if (!e.done) e.doneTs = Date.now(); // 時間 = 標記為做了的那一刻
     e.done = true;
     save();
     closeSheet();
@@ -353,6 +365,7 @@
   $('sheetUndone').addEventListener('click', function () {
     if (!editing) return;
     editing.e.done = false;
+    delete editing.e.doneTs;
     save();
     closeSheet();
     render();
@@ -386,12 +399,14 @@
       var row = document.createElement('div');
       row.className = 'entry';
 
+      // 只有「做了」才有時間可說:顯示標記完成的那一刻,同行末尾小灰字
+      var timeHtml = e.done ? '<span class="time">' + fmtTime(e.doneTs || e.ts) + '</span>' : '';
+
       row.innerHTML =
         '<span class="dot ' + (e.done ? 'done' : 'todo') + '"></span>' +
         '<div class="body">' +
-          '<div class="text"></div>' +
+          '<div class="topline"><div class="text"></div>' + timeHtml + '</div>' +
           (e.note ? '<div class="note"></div>' : '') +
-          '<div class="meta">' + fmtTime(e.ts) + '</div>' +
         '</div>' +
         '<button class="del" aria-label="刪除">×</button>';
       row.querySelector('.text').textContent = e.text;
@@ -411,7 +426,41 @@
     listEl.appendChild(card);
   }
 
-  // ---- events ----
+  // ---- 輸入:先點按鈕進入模式,再連續輸入 ----
+  function setMode(m) {
+    mode = m;
+    $('btnPlan').classList.toggle('active', m === 'plan');
+    $('btnDone').classList.toggle('active', m === 'done');
+    inputEl.placeholder = m === 'plan' ? '寫下待做的事' : '寫下做成的事';
+  }
+
+  // 點按鈕:有字 = 按此模式記一條;沒字 = 進入此模式,彈出鍵盤
+  $('btnPlan').addEventListener('click', function () {
+    setMode('plan');
+    if (addEntry(inputEl.value, false)) inputEl.value = '';
+    inputEl.focus();
+  });
+  $('btnDone').addEventListener('click', function () {
+    setMode('done');
+    if (addEntry(inputEl.value, true)) inputEl.value = '';
+    inputEl.focus();
+  });
+  // 鍵盤「完成」= 按當前模式記一條,可連續記
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      if (addEntry(inputEl.value, mode === 'done')) inputEl.value = '';
+    }
+  });
+
+  // 鍵盤彈出把頁面推上去時,保持最新一行可見
+  inputEl.addEventListener('focus', function () { setTimeout(scrollToBottom, 300); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function () {
+      if (document.activeElement === inputEl) scrollToBottom();
+    });
+  }
+
+  // ---- 日期切換 ----
   $('prevDay').addEventListener('click', function () { current.setDate(current.getDate() - 1); render(); });
   $('nextDay').addEventListener('click', function () { current.setDate(current.getDate() + 1); render(); });
   $('datePicker').addEventListener('change', function () {
@@ -421,25 +470,7 @@
     render();
   });
 
-  // 輸入框有字才允許錄入,避免「先點還是先寫」的困惑
-  inputEl.addEventListener('input', function () {
-    var has = inputEl.value.trim().length > 0;
-    $('btnPlan').disabled = !has;
-    $('btnDone').disabled = !has;
-  });
-
-  function afterAdd() {
-    inputEl.value = '';
-    $('btnPlan').disabled = true;
-    $('btnDone').disabled = true;
-    inputEl.focus();
-  }
-  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); afterAdd(); });
-  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); afterAdd(); });
-  inputEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { addEntry(inputEl.value, true); afterAdd(); }
-  });
-
+  // ---- 備份 ----
   $('btnExport').addEventListener('click', function () {
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
