@@ -53,8 +53,45 @@ try {
   assert.equal(await page.locator('.sheet').evaluate(el => el.scrollWidth <= el.clientWidth), true);
   await page.getByRole('button', { name: '關閉', exact: true }).click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const rolloverContext = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Taipei', reducedMotion: 'reduce' });
+  const rollover = await rolloverContext.newPage();
+  rollover.on('pageerror', error => errors.push(error.message));
+  await rollover.clock.install({ time: new Date('2026-09-06T23:50:00+08:00') });
+  await rollover.clock.pauseAt(new Date('2026-09-06T23:59:58+08:00'));
+  await rollover.addInitScript(() => {
+    if (localStorage.getItem('wins.v1')) return;
+    localStorage.setItem('wins.v1', JSON.stringify({
+      '2026-09-05': [
+        { id: 'pending', text: '昨天的計劃', done: false, note: '保留備註', ts: 1788602400000 },
+        { id: 'attempted', text: '已經嘗試', done: true, note: '沒有成功', ts: 1788602400000 },
+      ],
+      '2026-09-08': [{ id: 'future', text: '未來的計劃', done: false, ts: 1788602400000 }],
+    }));
+  });
+  await rollover.goto('http://127.0.0.1:8080');
+  assert.equal(await rollover.locator('.entry').count(), 1);
+  assert.equal(await rollover.locator('.entry .text').textContent(), '昨天的計劃');
+  await rollover.locator('.entry').click();
+  await rollover.locator('#sheetInput').fill('午夜前輸入的草稿');
+  await rollover.clock.runFor(2000);
+  assert.equal(await rollover.locator('#datePicker').inputValue(), '2026-09-07');
+  assert.equal(await rollover.locator('#sheetInput').inputValue(), '午夜前輸入的草稿');
+  assert.equal(await rollover.evaluate(() => document.activeElement.id), 'sheetInput');
+  await rollover.getByRole('button', { name: '儲存', exact: true }).click();
+  const saved = await rollover.evaluate(() => JSON.parse(localStorage.getItem('wins.v1')));
+  assert.equal(saved['2026-09-06'], undefined);
+  assert.equal(saved['2026-09-05'].length, 1);
+  assert.equal(saved['2026-09-05'][0].id, 'attempted');
+  assert.equal(saved['2026-09-07'][0].id, 'pending');
+  assert.equal(saved['2026-09-07'][0].done, true);
+  assert.equal(saved['2026-09-07'][0].note, '午夜前輸入的草稿');
+  assert.equal(saved['2026-09-08'][0].id, 'future');
+  await rollover.reload();
+  assert.equal(await rollover.locator('.entry').count(), 1);
+  await rollover.getByRole('button', { name: '前一天', exact: true }).click();
+  assert.equal(await rollover.locator('.entry').count(), 0);
   assert.deepEqual(errors, []);
-  console.log('PASS: real Chrome flows, persistence, reduced motion, 320/390/600/1440px layout, long input, no page errors');
+  console.log('PASS: real Chrome flows, direct focus, compact/responsive layout, startup and midnight rollover, preserved drafts, reload persistence, no page errors');
 } finally {
   await browser.close();
 }

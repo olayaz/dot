@@ -175,6 +175,8 @@
   var KEY = 'wins.v1';
   var data = load();
   var current = today();
+  var knownDay = dayKey(current);
+  var midnightTimer = null;
   var recordedId = null;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -204,6 +206,46 @@
   function today() { var d = new Date(); d.setHours(0,0,0,0); return d; }
 
   function entries(d) { return data[dayKey(d)] || []; }
+
+  function carryForward(targetKey) {
+    var moved = [];
+    Object.keys(data).sort().forEach(function (k) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k >= targetKey) return;
+      var remaining = data[k].filter(function (e) {
+        if (e.done !== false) return true;
+        moved.push(e);
+        if (editing && editing.e === e) editing.k = targetKey;
+        return false;
+      });
+      if (remaining.length === data[k].length) return;
+      if (remaining.length) data[k] = remaining; else delete data[k];
+    });
+    if (moved.length) data[targetKey] = (data[targetKey] || []).concat(moved);
+    return moved.length;
+  }
+
+  function syncDay() {
+    var day = today();
+    var key = dayKey(day);
+    var changed = key !== knownDay;
+    if (changed && dayKey(current) === knownDay) current = day;
+    knownDay = key;
+    var moved = carryForward(key);
+    if (moved) save();
+    return changed || moved > 0;
+  }
+
+  function scheduleDayCheck() {
+    clearTimeout(midnightTimer);
+    var next = new Date();
+    next.setHours(24, 0, 0, 0);
+    midnightTimer = setTimeout(checkDay, Math.max(1, next.getTime() - Date.now()));
+  }
+
+  function checkDay() {
+    if (syncDay()) render();
+    scheduleDayCheck();
+  }
 
   function scrollToBottom() {
     requestAnimationFrame(function () { listEl.scrollTop = listEl.scrollHeight; });
@@ -250,6 +292,7 @@
   var editing = null; // { k, e }
 
   function showSheet() {
+    checkDay();
     $('sheetFeedback').textContent = '';
     $('sheetInput').setAttribute('aria-label', sheetMode === 'edit' ? '結果' : sheetMode === 'add-plan' ? '計劃內容' : '記錄內容');
     $('overlay').hidden = false;
@@ -293,6 +336,7 @@
   }
 
   $('sheetOk').addEventListener('click', function () {
+    checkDay();
     var inp = $('sheetInput');
     if (sheetMode === 'edit') {
       if (!editing) return;
@@ -354,6 +398,7 @@
   }
 
   function render() {
+    syncDay();
     var isToday = dayKey(current) === dayKey(today());
     $('dateText').textContent = (current.getMonth() + 1) + ' 月 ' + current.getDate() + ' 日';
     $('weekText').textContent = '星期' + WEEK[current.getDay()] + (isToday ? ' · 今天' : '');
@@ -455,7 +500,14 @@
     this.value = '';
   });
 
+  window.addEventListener('focus', checkDay);
+  window.addEventListener('pageshow', checkDay);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') checkDay();
+  });
+
   render();
+  scheduleDayCheck();
 })();
 </script>
 </body>
