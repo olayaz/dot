@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>小勝利</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --ink: #1c1c1e;
+    --ink-2: #8a8a8e;
+    --accent: #34a853;
+    --accent-soft: #e7f5ec;
+    --warn: #e8a13a;
+    --stuck: #c0564b;
+    --line: #e8e6e1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang TC", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  header {
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 10px;
+    background: var(--bg);
+  }
+  .date-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .date-nav button {
+    border: none;
+    background: none;
+    font-size: 26px;
+    color: var(--ink-2);
+    padding: 4px 14px;
+    cursor: pointer;
+  }
+  .date-label {
+    font-size: 18px;
+    font-weight: 600;
+    position: relative;
+    cursor: pointer;
+  }
+  .date-label .sub { display: block; font-size: 12px; font-weight: 400; color: var(--ink-2); text-align: center; }
+  #datePicker {
+    position: absolute; inset: 0; opacity: 0; width: 100%;
+  }
+  .stats {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--ink-2);
+    text-align: center;
+  }
+  .stats b { color: var(--accent); font-weight: 600; }
+
+  #list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 12px 12px;
+  }
+  .empty {
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 14px;
+    margin-top: 60px;
+    line-height: 1.8;
+  }
+  .item {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .item .row { display: flex; align-items: flex-start; gap: 8px; }
+  .item .text { flex: 1; font-size: 16px; line-height: 1.45; word-break: break-word; }
+  .item .meta { font-size: 12px; color: var(--ink-2); margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .del {
+    border: none; background: none; color: #c7c7cc; font-size: 18px;
+    padding: 0 2px; cursor: pointer; flex-shrink: 0;
+  }
+  .badge {
+    font-size: 11px; padding: 1px 7px; border-radius: 8px; flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .badge.plan { background: #eef0f3; color: var(--ink-2); }
+  .badge.win { background: var(--accent-soft); color: var(--accent); }
+  .item.done .text { color: var(--ink-2); text-decoration: line-through; }
+  .item.done { opacity: .75; }
+
+  .status-btns { display: flex; gap: 6px; }
+  .status-btns button {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 8px;
+    font-size: 12px;
+    padding: 2px 8px;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .status-btns button.on.done  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .status-btns button.on.half  { background: #fdf3e3; border-color: var(--warn); color: var(--warn); }
+  .status-btns button.on.stuck { background: #fbeae8; border-color: var(--stuck); color: var(--stuck); }
+
+  footer {
+    padding: 8px 12px calc(env(safe-area-inset-bottom) + 10px);
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+  .input-row { display: flex; gap: 8px; }
+  #input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 16px;
+    background: #fff;
+    outline: none;
+  }
+  .add-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .add-btns button {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 11px 0;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #btnPlan { background: #eceef1; color: var(--ink); }
+  #btnWin  { background: var(--accent); color: #fff; }
+  .tools { text-align: center; margin-top: 8px; }
+  .tools button {
+    border: none; background: none; color: var(--ink-2);
+    font-size: 12px; cursor: pointer; padding: 2px 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="date-nav">
+    <button id="prevDay" aria-label="前一天">‹</button>
+    <div class="date-label">
+      <span id="dateText"></span>
+      <span class="sub" id="weekText"></span>
+      <input type="date" id="datePicker">
+    </div>
+    <button id="nextDay" aria-label="後一天">›</button>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div id="list"></div>
+
+<footer>
+  <div class="input-row">
+    <input id="input" type="text" placeholder="寫點什麼…" enterkeyhint="done" autocomplete="off">
+  </div>
+  <div class="add-btns">
+    <button id="btnPlan">+ 今日計劃</button>
+    <button id="btnWin">✓ 記一筆小勝利</button>
+  </div>
+  <div class="tools">
+    <button id="btnExport">導出備份</button>
+    <button id="btnImport">導入備份</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+  </div>
+</footer>
+
+<script>
+(function () {
+  var KEY = 'wins.v1';
+  var data = load();
+  var current = today();
+
+  var $ = function (id) { return document.getElementById(id); };
+  var listEl = $('list'), inputEl = $('input');
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function today() { var d = new Date(); d.setHours(0,0,0,0); return d; }
+
+  function entries(d) { return data[dayKey(d)] || []; }
+
+  function addEntry(text, kind) {
+    text = text.trim();
+    if (!text) return;
+    var k = dayKey(current);
+    if (!data[k]) data[k] = [];
+    data[k].push({
+      id: Date.now() + '' + Math.floor(Math.random() * 1000),
+      text: text,
+      kind: kind,                 // 'plan' | 'win'
+      status: kind === 'win' ? 'done' : 'open',  // open | done | half | stuck
+      ts: Date.now()
+    });
+    save();
+    render();
+  }
+
+  function setStatus(k, id, status) {
+    var arr = data[k] || [];
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].id === id) {
+        arr[i].status = (arr[i].status === status) ? 'open' : status;
+        break;
+      }
+    }
+    save();
+    render();
+  }
+
+  function removeEntry(k, id) {
+    data[k] = (data[k] || []).filter(function (e) { return e.id !== id; });
+    if (!data[k].length) delete data[k];
+    save();
+    render();
+  }
+
+  // ---- stats ----
+  function totalCount() {
+    var n = 0;
+    for (var k in data) n += data[k].length;
+    return n;
+  }
+  function streak() {
+    var d = today();
+    if (!entries(d).length) d.setDate(d.getDate() - 1); // 今天還沒記,從昨天算起
+    var n = 0;
+    while (entries(d).length) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  // ---- render ----
+  var WEEK = ['日','一','二','三','四','五','六'];
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function render() {
+    var isToday = dayKey(current) === dayKey(today());
+    $('dateText').textContent = (current.getMonth() + 1) + ' 月 ' + current.getDate() + ' 日';
+    $('weekText').textContent = '星期' + WEEK[current.getDay()] + (isToday ? ' · 今天' : '');
+    $('datePicker').value = dayKey(current);
+
+    var todayN = entries(today()).length;
+    $('stats').innerHTML = '今天 <b>' + todayN + '</b> 條 · 連續 <b>' + streak() + '</b> 天 · 累計 <b>' + totalCount() + '</b> 條';
+
+    var arr = entries(current);
+    if (!arr.length) {
+      listEl.innerHTML = '<div class="empty">這一天還是空的。<br>做成了一件事,就記一筆吧。</div>';
+      return;
+    }
+    var k = dayKey(current);
+    listEl.innerHTML = '';
+    arr.forEach(function (e) {
+      var div = document.createElement('div');
+      div.className = 'item' + (e.status === 'done' ? ' done' : '');
+
+      var badge = e.kind === 'plan'
+        ? '<span class="badge plan">計劃</span>'
+        : '<span class="badge win">勝利</span>';
+
+      var statusBtns = '';
+      if (e.kind === 'plan') {
+        statusBtns =
+          '<span class="status-btns">' +
+            '<button data-s="done"  class="' + (e.status === 'done'  ? 'on done'  : '') + '">完成</button>' +
+            '<button data-s="half"  class="' + (e.status === 'half'  ? 'on half'  : '') + '">一半</button>' +
+            '<button data-s="stuck" class="' + (e.status === 'stuck' ? 'on stuck' : '') + '">卡住</button>' +
+          '</span>';
+      }
+
+      div.innerHTML =
+        '<div class="row">' + badge +
+          '<div class="text"></div>' +
+          '<button class="del" aria-label="刪除">×</button>' +
+        '</div>' +
+        '<div class="meta"><span>' + fmtTime(e.ts) + '</span>' + statusBtns + '</div>';
+      div.querySelector('.text').textContent = e.text;
+
+      div.querySelector('.del').addEventListener('click', function () {
+        if (confirm('刪掉這一條?')) removeEntry(k, e.id);
+      });
+      var btns = div.querySelectorAll('.status-btns button');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function () {
+          setStatus(k, e.id, this.getAttribute('data-s'));
+        });
+      }
+      listEl.appendChild(div);
+    });
+  }
+
+  // ---- events ----
+  $('prevDay').addEventListener('click', function () { current.setDate(current.getDate() - 1); render(); });
+  $('nextDay').addEventListener('click', function () { current.setDate(current.getDate() + 1); render(); });
+  $('datePicker').addEventListener('change', function () {
+    if (!this.value) return;
+    var p = this.value.split('-');
+    current = new Date(+p[0], +p[1] - 1, +p[2]);
+    render();
+  });
+
+  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, 'plan'); inputEl.value = ''; inputEl.focus(); });
+  $('btnWin').addEventListener('click', function () { addEntry(inputEl.value, 'win'); inputEl.value = ''; inputEl.focus(); });
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { addEntry(inputEl.value, 'win'); inputEl.value = ''; }
+  });
+
+  $('btnExport').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wins-backup-' + dayKey(today()) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $('btnImport').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var f = this.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var imported = JSON.parse(r.result);
+        if (typeof imported !== 'object' || imported === null) throw new Error();
+        if (!confirm('導入會覆蓋目前所有資料,確定嗎?(建議先導出備份)')) return;
+        data = imported;
+        save();
+        render();
+        alert('導入成功');
+      } catch (e) {
+        alert('文件格式不對,導入失敗');
+      }
+    };
+    r.readAsText(f);
+    this.value = '';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
