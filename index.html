@@ -84,8 +84,10 @@
     gap: 10px;
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
+    cursor: pointer;
   }
   .entry:last-child { border-bottom: none; }
+  .entry:active { background: #fafaf8; }
   .dot {
     width: 12px; height: 12px;
     border-radius: 50%;
@@ -102,44 +104,63 @@
     margin-top: 4px;
     line-height: 1.4;
     word-break: break-word;
-    cursor: pointer;
   }
   .meta { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
-  .add-note { cursor: pointer; color: #b5b5ba; }
-  .mark-done {
-    border: 1px solid var(--line);
-    background: #fff;
-    border-radius: 8px;
-    font-size: 13px;
-    padding: 4px 12px;
-    color: var(--ink);
-    cursor: pointer;
-    margin-top: 8px;
-  }
-  .mark-done:active { background: var(--bg); }
-  .note-edit { display: flex; gap: 6px; margin-top: 8px; }
-  .note-edit input {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 14px;
-    outline: none;
-  }
-  .note-edit button {
-    border: none;
-    background: var(--ink);
-    color: #fff;
-    border-radius: 8px;
-    font-size: 13px;
-    padding: 6px 12px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
   .del {
     border: none; background: none; color: #c7c7cc; font-size: 18px;
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
+  }
+
+  /* 底部彈窗 */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    display: flex;
+    align-items: flex-end;
+    z-index: 10;
+  }
+  #overlay[hidden] { display: none; }
+  .sheet {
+    background: #fff;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px calc(env(safe-area-inset-bottom) + 16px);
+  }
+  .sheet-text {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    word-break: break-word;
+  }
+  #sheetInput {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+    outline: none;
+  }
+  .sheet-btns { display: flex; gap: 8px; margin-top: 12px; }
+  .sheet-btns button {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 0;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #sheetCancel { background: #eceef1; color: var(--ink); }
+  #sheetOk { background: var(--ink); color: #fff; }
+  #sheetUndone {
+    display: block;
+    margin: 12px auto 0;
+    border: none;
+    background: none;
+    color: var(--ink-2);
+    font-size: 13px;
+    cursor: pointer;
   }
 
   footer {
@@ -207,10 +228,22 @@
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
-    <span class="ver">v0.3</span>
+    <span class="ver">v0.4</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
+
+<div id="overlay" hidden>
+  <div class="sheet">
+    <div class="sheet-text" id="sheetText"></div>
+    <input id="sheetInput" type="text" placeholder="結果怎麼樣?一句話寫下來" enterkeyhint="done">
+    <div class="sheet-btns">
+      <button id="sheetCancel">取消</button>
+      <button id="sheetOk">做了,記下</button>
+    </div>
+    <button id="sheetUndone" hidden>改回沒做</button>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -261,12 +294,6 @@
     render();
   }
 
-  function findEntry(k, id) {
-    var arr = data[k] || [];
-    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
-    return null;
-  }
-
   function removeEntry(k, id) {
     data[k] = (data[k] || []).filter(function (e) { return e.id !== id; });
     if (!data[k].length) delete data[k];
@@ -288,29 +315,54 @@
     return n;
   }
 
+  // ---- 底部彈窗:點一行,寫結果 ----
+  var editing = null; // { k, e }
+
+  function openSheet(k, e) {
+    editing = { k: k, e: e };
+    $('sheetText').textContent = e.text;
+    $('sheetInput').value = e.note || '';
+    $('sheetOk').textContent = e.done ? '記下' : '做了,記下';
+    $('sheetUndone').hidden = !e.done;
+    $('overlay').hidden = false;
+    setTimeout(function () { $('sheetInput').focus(); }, 50);
+  }
+  function closeSheet() {
+    editing = null;
+    $('overlay').hidden = true;
+    $('sheetInput').blur();
+  }
+
+  $('sheetOk').addEventListener('click', function () {
+    if (!editing) return;
+    var e = editing.e;
+    var note = $('sheetInput').value.trim();
+    if (note) e.note = note; else delete e.note;
+    e.done = true;
+    save();
+    closeSheet();
+    render();
+  });
+  $('sheetCancel').addEventListener('click', closeSheet);
+  $('overlay').addEventListener('click', function (ev) {
+    if (ev.target === this) closeSheet();
+  });
+  $('sheetInput').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') $('sheetOk').click();
+  });
+  $('sheetUndone').addEventListener('click', function () {
+    if (!editing) return;
+    editing.e.done = false;
+    save();
+    closeSheet();
+    render();
+  });
+
   // ---- render ----
   var WEEK = ['日','一','二','三','四','五','六'];
   function fmtTime(ts) {
     var d = new Date(ts);
     return pad(d.getHours()) + ':' + pad(d.getMinutes());
-  }
-
-  // 在行內放一個輸入框,提交後作為這條記錄的結果(note)
-  function noteEditor(k, e, onDone) {
-    var wrap = document.createElement('div');
-    wrap.className = 'note-edit';
-    wrap.innerHTML = '<input type="text" placeholder="結果怎麼樣?一句話寫下來"><button>記下</button>';
-    var inp = wrap.querySelector('input');
-    if (e.note) inp.value = e.note;
-    function submit() {
-      e.note = inp.value.trim();
-      if (!e.note) delete e.note;
-      save();
-      onDone();
-    }
-    wrap.querySelector('button').addEventListener('click', submit);
-    inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') submit(); });
-    return wrap;
   }
 
   function render() {
@@ -334,53 +386,23 @@
       var row = document.createElement('div');
       row.className = 'entry';
 
-      var noteHtml = e.done && e.note ? '<div class="note"></div>' : '';
-      var metaExtra = (e.done && !e.note) ? ' · <span class="add-note">+ 寫結果</span>' : '';
-
       row.innerHTML =
         '<span class="dot ' + (e.done ? 'done' : 'todo') + '"></span>' +
         '<div class="body">' +
           '<div class="text"></div>' +
-          noteHtml +
-          '<div class="meta">' + fmtTime(e.ts) + metaExtra + '</div>' +
-          '<div class="slot"></div>' +
+          (e.note ? '<div class="note"></div>' : '') +
+          '<div class="meta">' + fmtTime(e.ts) + '</div>' +
         '</div>' +
         '<button class="del" aria-label="刪除">×</button>';
       row.querySelector('.text').textContent = e.text;
       var noteEl = row.querySelector('.note');
       if (noteEl) noteEl.textContent = '→ ' + e.note;
-      var slot = row.querySelector('.slot');
 
-      row.querySelector('.del').addEventListener('click', function () {
+      row.addEventListener('click', function () { openSheet(k, e); });
+      row.querySelector('.del').addEventListener('click', function (ev) {
+        ev.stopPropagation();
         if (confirm('刪掉這一條?')) removeEntry(k, e.id);
       });
-
-      if (!e.done) {
-        // 待做:一個「做了」按鈕,點了之後自己寫結果,寫什麼都算做了
-        var btn = document.createElement('button');
-        btn.className = 'mark-done';
-        btn.textContent = '做了';
-        btn.addEventListener('click', function () {
-          slot.innerHTML = '';
-          slot.appendChild(noteEditor(k, e, function () {
-            e.done = true;
-            save();
-            render();
-          }));
-          slot.querySelector('input').focus();
-        });
-        slot.appendChild(btn);
-      } else {
-        // 已做:點結果文字或「+ 寫結果」可以補寫/修改
-        var edit = function () {
-          slot.innerHTML = '';
-          slot.appendChild(noteEditor(k, e, render));
-          slot.querySelector('input').focus();
-        };
-        if (noteEl) noteEl.addEventListener('click', edit);
-        var addNote = row.querySelector('.add-note');
-        if (addNote) addNote.addEventListener('click', edit);
-      }
 
       card.appendChild(row);
     });
@@ -406,15 +428,16 @@
     $('btnDone').disabled = !has;
   });
 
-  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); inputEl.value = ''; this.disabled = true; $('btnDone').disabled = true; inputEl.focus(); });
-  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); inputEl.value = ''; this.disabled = true; $('btnPlan').disabled = true; inputEl.focus(); });
+  function afterAdd() {
+    inputEl.value = '';
+    $('btnPlan').disabled = true;
+    $('btnDone').disabled = true;
+    inputEl.focus();
+  }
+  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); afterAdd(); });
+  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); afterAdd(); });
   inputEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      addEntry(inputEl.value, true);
-      inputEl.value = '';
-      $('btnPlan').disabled = true;
-      $('btnDone').disabled = true;
-    }
+    if (e.key === 'Enter') { addEntry(inputEl.value, true); afterAdd(); }
   });
 
   $('btnExport').addEventListener('click', function () {
