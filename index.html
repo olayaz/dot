@@ -112,23 +112,25 @@
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
   }
 
-  /* 底部彈窗:半透明,後面的列表保持可見;
-     top/height 由 JS 跟隨 visualViewport 實時設置,防止被鍵盤推走 */
+  /* 居中懸浮窗口:不錨定屏幕底部,鍵盤彈出時只需在剩餘可視區域重新居中,
+     位移很小;top/height 由 JS 跟隨 visualViewport 設置 */
   #overlay {
     position: fixed;
     left: 0; right: 0; top: 0;
     height: 100dvh;
-    background: rgba(0,0,0,.18);
+    background: rgba(0,0,0,.25);
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: center;
     z-index: 10;
   }
   #overlay[hidden] { display: none; }
   .sheet {
     background: #fff;
-    width: 100%;
-    border-radius: 16px 16px 0 0;
+    width: min(330px, 86%);
+    border-radius: 14px;
     padding: 18px 16px calc(env(safe-area-inset-bottom) + 16px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
   }
   .sheet-text {
     font-size: 16px;
@@ -220,7 +222,7 @@
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
-    <span class="ver">v0.7</span>
+    <span class="ver">v0.8</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
@@ -325,10 +327,6 @@
     $('overlay').hidden = false;
     syncViewport();
     setTimeout(function () { $('sheetInput').focus(); }, 50);
-    // 鍵盤彈出是漸進動畫,期間多次對齊可視區域
-    [150, 350, 600, 1000].forEach(function (ms) {
-      setTimeout(syncViewport, ms);
-    });
   }
   function closeSheet() {
     sheetMode = null;
