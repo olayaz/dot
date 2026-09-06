@@ -106,8 +106,7 @@
   }
   .meta { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
   .add-note { cursor: pointer; color: #b5b5ba; }
-  .actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
-  .actions button {
+  .mark-done {
     border: 1px solid var(--line);
     background: #fff;
     border-radius: 8px;
@@ -115,8 +114,9 @@
     padding: 4px 12px;
     color: var(--ink);
     cursor: pointer;
+    margin-top: 8px;
   }
-  .actions button:active { background: var(--bg); }
+  .mark-done:active { background: var(--bg); }
   .note-edit { display: flex; gap: 6px; margin-top: 8px; }
   .note-edit input {
     flex: 1;
@@ -164,13 +164,21 @@
     font-size: 15px;
     cursor: pointer;
   }
+  .add-btns button:disabled { opacity: 0.35; }
   #btnPlan { background: #eceef1; color: var(--ink); }
   #btnDone { background: var(--ink); color: #fff; }
-  .tools { text-align: center; margin-top: 8px; }
+  .tools {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
   .tools button {
     border: none; background: none; color: var(--ink-2);
     font-size: 12px; cursor: pointer; padding: 2px 8px;
   }
+  .ver { font-size: 10px; color: #d1d1d6; }
 </style>
 </head>
 <body>
@@ -191,14 +199,15 @@
 <div id="list"></div>
 
 <footer>
-  <input id="input" type="text" placeholder="寫點什麼…" enterkeyhint="done" autocomplete="off">
+  <input id="input" type="text" placeholder="先寫下來,再點下面的按鈕" enterkeyhint="done" autocomplete="off">
   <div class="add-btns">
-    <button id="btnPlan">記為待做</button>
-    <button id="btnDone">做到了,記一筆</button>
+    <button id="btnPlan" disabled>記為待做</button>
+    <button id="btnDone" disabled>做到了,記一筆</button>
   </div>
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
+    <span class="ver">v0.3</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
@@ -221,8 +230,6 @@
       d[k].forEach(function (e) {
         if ('status' in e) {
           e.done = e.status !== 'open';
-          if (e.status === 'half') e.note = '做了一半';
-          if (e.status === 'stuck') e.note = '卡住了';
           delete e.status;
         }
         delete e.kind;
@@ -351,8 +358,8 @@
       if (!e.done) {
         // 待做:一個「做了」按鈕,點了之後自己寫結果,寫什麼都算做了
         var btn = document.createElement('button');
+        btn.className = 'mark-done';
         btn.textContent = '做了';
-        btn.style.cssText = 'border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;padding:4px 12px;color:var(--ink);cursor:pointer;margin-top:8px;';
         btn.addEventListener('click', function () {
           slot.innerHTML = '';
           slot.appendChild(noteEditor(k, e, function () {
@@ -392,10 +399,22 @@
     render();
   });
 
-  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); inputEl.value = ''; inputEl.focus(); });
-  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); inputEl.value = ''; inputEl.focus(); });
+  // 輸入框有字才允許錄入,避免「先點還是先寫」的困惑
+  inputEl.addEventListener('input', function () {
+    var has = inputEl.value.trim().length > 0;
+    $('btnPlan').disabled = !has;
+    $('btnDone').disabled = !has;
+  });
+
+  $('btnPlan').addEventListener('click', function () { addEntry(inputEl.value, false); inputEl.value = ''; this.disabled = true; $('btnDone').disabled = true; inputEl.focus(); });
+  $('btnDone').addEventListener('click', function () { addEntry(inputEl.value, true); inputEl.value = ''; this.disabled = true; $('btnPlan').disabled = true; inputEl.focus(); });
   inputEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { addEntry(inputEl.value, true); inputEl.value = ''; }
+    if (e.key === 'Enter') {
+      addEntry(inputEl.value, true);
+      inputEl.value = '';
+      $('btnPlan').disabled = true;
+      $('btnDone').disabled = true;
+    }
   });
 
   $('btnExport').addEventListener('click', function () {
