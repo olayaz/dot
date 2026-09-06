@@ -112,11 +112,12 @@
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
   }
 
-  /* 底部彈窗 */
+  /* 底部彈窗:半透明,後面的列表保持可見 */
   #overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.3);
+    left: 0; right: 0; top: 0;
+    height: 100dvh;
+    background: rgba(0,0,0,.18);
     display: flex;
     align-items: flex-end;
     z-index: 10;
@@ -165,28 +166,18 @@
   }
 
   footer {
-    padding: 8px 12px calc(env(safe-area-inset-bottom) + 10px);
+    padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
     border-top: 1px solid var(--line);
   }
-  #input {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 11px 12px;
-    font-size: 16px;
-    background: #fff;
-    outline: none;
-  }
-  .add-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .add-btns { display: flex; gap: 8px; }
   .add-btns button {
     flex: 1;
     border: none;
     border-radius: 12px;
-    padding: 11px 0;
-    font-size: 15px;
+    padding: 13px 0;
+    font-size: 16px;
     cursor: pointer;
   }
-  .add-btns button.active { outline: 2px solid var(--ink); outline-offset: -2px; }
   #btnPlan { background: #eceef1; color: var(--ink); }
   #btnDone { background: var(--ink); color: #fff; }
   .tools {
@@ -194,7 +185,7 @@
     justify-content: center;
     align-items: center;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
   .tools button {
     border: none; background: none; color: var(--ink-2);
@@ -221,15 +212,14 @@
 <div id="list"></div>
 
 <footer>
-  <input id="input" type="text" placeholder="寫下做成的事" enterkeyhint="done" autocomplete="off">
   <div class="add-btns">
     <button id="btnPlan">記為待做</button>
-    <button id="btnDone" class="active">做到了,記一筆</button>
+    <button id="btnDone">做到了,記一筆</button>
   </div>
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
-    <span class="ver">v0.5</span>
+    <span class="ver">v0.6</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
@@ -237,10 +227,10 @@
 <div id="overlay" hidden>
   <div class="sheet">
     <div class="sheet-text" id="sheetText"></div>
-    <input id="sheetInput" type="text" placeholder="結果怎麼樣?一句話寫下來" enterkeyhint="done">
+    <input id="sheetInput" type="text" enterkeyhint="done">
     <div class="sheet-btns">
       <button id="sheetCancel">取消</button>
-      <button id="sheetOk">做了,記下</button>
+      <button id="sheetOk">記下</button>
     </div>
     <button id="sheetUndone" hidden>改回沒做</button>
   </div>
@@ -251,10 +241,9 @@
   var KEY = 'wins.v1';
   var data = load();
   var current = today();
-  var mode = 'done'; // 'done' = 做到了,記一筆; 'plan' = 記為待做
 
   var $ = function (id) { return document.getElementById(id); };
-  var listEl = $('list'), inputEl = $('input');
+  var listEl = $('list');
 
   function load() {
     var d;
@@ -326,34 +315,69 @@
     return n;
   }
 
-  // ---- 底部彈窗:點一行,寫結果 ----
+  // ---- 底部彈窗 ----
+  // sheetMode: 'add-plan' | 'add-done' | 'edit'
+  var sheetMode = null;
   var editing = null; // { k, e }
 
-  function openSheet(k, e) {
-    editing = { k: k, e: e };
-    $('sheetText').textContent = e.text;
-    $('sheetInput').value = e.note || '';
-    $('sheetOk').textContent = e.done ? '記下' : '做了,記下';
-    $('sheetUndone').hidden = !e.done;
+  function showSheet() {
     $('overlay').hidden = false;
+    syncViewport();
     setTimeout(function () { $('sheetInput').focus(); }, 50);
   }
   function closeSheet() {
+    sheetMode = null;
     editing = null;
     $('overlay').hidden = true;
     $('sheetInput').blur();
   }
 
+  // 點底部按鈕:彈出輸入窗口,後面的列表仍然可見
+  function openAddSheet(kind) {
+    sheetMode = kind === 'plan' ? 'add-plan' : 'add-done';
+    editing = null;
+    $('sheetText').textContent = kind === 'plan' ? '記為待做' : '做到了,記一筆';
+    $('sheetInput').value = '';
+    $('sheetInput').placeholder = kind === 'plan' ? '寫下待做的事' : '寫下做成的事';
+    $('sheetOk').textContent = '記下';
+    $('sheetCancel').textContent = '完成';
+    $('sheetUndone').hidden = true;
+    scrollToBottom();
+    showSheet();
+  }
+
+  // 點某一行:寫/改結果
+  function openEditSheet(k, e) {
+    sheetMode = 'edit';
+    editing = { k: k, e: e };
+    $('sheetText').textContent = e.text;
+    $('sheetInput').value = e.note || '';
+    $('sheetInput').placeholder = '結果怎麼樣?一句話寫下來';
+    $('sheetOk').textContent = e.done ? '記下' : '做了,記下';
+    $('sheetCancel').textContent = '取消';
+    $('sheetUndone').hidden = !e.done;
+    showSheet();
+  }
+
   $('sheetOk').addEventListener('click', function () {
-    if (!editing) return;
-    var e = editing.e;
-    var note = $('sheetInput').value.trim();
-    if (note) e.note = note; else delete e.note;
-    if (!e.done) e.doneTs = Date.now(); // 時間 = 標記為做了的那一刻
-    e.done = true;
-    save();
-    closeSheet();
-    render();
+    var inp = $('sheetInput');
+    if (sheetMode === 'edit') {
+      if (!editing) return;
+      var e = editing.e;
+      var note = inp.value.trim();
+      if (note) e.note = note; else delete e.note;
+      if (!e.done) e.doneTs = Date.now(); // 時間 = 標記為做了的那一刻
+      e.done = true;
+      save();
+      closeSheet();
+      render();
+    } else if (sheetMode) {
+      // 記一條,清空,窗口不收起,可連續記;新行立刻出現在後面的列表裡
+      if (addEntry(inp.value, sheetMode === 'add-done')) {
+        inp.value = '';
+        inp.focus();
+      }
+    }
   });
   $('sheetCancel').addEventListener('click', closeSheet);
   $('overlay').addEventListener('click', function (ev) {
@@ -370,6 +394,17 @@
     closeSheet();
     render();
   });
+
+  // 鍵盤彈出時讓彈窗貼在鍵盤上方,而不是被推走
+  function syncViewport() {
+    if (window.visualViewport && !$('overlay').hidden) {
+      $('overlay').style.height = window.visualViewport.height + 'px';
+    }
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewport);
+    window.visualViewport.addEventListener('scroll', syncViewport);
+  }
 
   // ---- render ----
   var WEEK = ['日','一','二','三','四','五','六'];
@@ -388,7 +423,7 @@
 
     var arr = entries(current);
     if (!arr.length) {
-      listEl.innerHTML = '<div class="empty">這一天還沒有記錄。<br>做成了一件事,就記一筆吧。</div>';
+      listEl.innerHTML = '<div class="empty">這一天還沒有記錄。<br>點下面的按鈕,記一筆吧。</div>';
       return;
     }
     var k = dayKey(current);
@@ -413,7 +448,7 @@
       var noteEl = row.querySelector('.note');
       if (noteEl) noteEl.textContent = '→ ' + e.note;
 
-      row.addEventListener('click', function () { openSheet(k, e); });
+      row.addEventListener('click', function () { openEditSheet(k, e); });
       row.querySelector('.del').addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (confirm('刪掉這一條?')) removeEntry(k, e.id);
@@ -426,39 +461,9 @@
     listEl.appendChild(card);
   }
 
-  // ---- 輸入:先點按鈕進入模式,再連續輸入 ----
-  function setMode(m) {
-    mode = m;
-    $('btnPlan').classList.toggle('active', m === 'plan');
-    $('btnDone').classList.toggle('active', m === 'done');
-    inputEl.placeholder = m === 'plan' ? '寫下待做的事' : '寫下做成的事';
-  }
-
-  // 點按鈕:有字 = 按此模式記一條;沒字 = 進入此模式,彈出鍵盤
-  $('btnPlan').addEventListener('click', function () {
-    setMode('plan');
-    if (addEntry(inputEl.value, false)) inputEl.value = '';
-    inputEl.focus();
-  });
-  $('btnDone').addEventListener('click', function () {
-    setMode('done');
-    if (addEntry(inputEl.value, true)) inputEl.value = '';
-    inputEl.focus();
-  });
-  // 鍵盤「完成」= 按當前模式記一條,可連續記
-  inputEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      if (addEntry(inputEl.value, mode === 'done')) inputEl.value = '';
-    }
-  });
-
-  // 鍵盤彈出把頁面推上去時,保持最新一行可見
-  inputEl.addEventListener('focus', function () { setTimeout(scrollToBottom, 300); });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function () {
-      if (document.activeElement === inputEl) scrollToBottom();
-    });
-  }
+  // ---- 底部兩個按鈕:唯一的輸入入口 ----
+  $('btnPlan').addEventListener('click', function () { openAddSheet('plan'); });
+  $('btnDone').addEventListener('click', function () { openAddSheet('done'); });
 
   // ---- 日期切換 ----
   $('prevDay').addEventListener('click', function () { current.setDate(current.getDate() - 1); render(); });
