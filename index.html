@@ -112,7 +112,8 @@
     padding: 0 2px; cursor: pointer; flex-shrink: 0;
   }
 
-  /* 底部彈窗:半透明,後面的列表保持可見 */
+  /* 底部彈窗:半透明,後面的列表保持可見;
+     top/height 由 JS 跟隨 visualViewport 實時設置,防止被鍵盤推走 */
   #overlay {
     position: fixed;
     left: 0; right: 0; top: 0;
@@ -219,7 +220,7 @@
   <div class="tools">
     <button id="btnExport">導出備份</button>
     <button id="btnImport">導入備份</button>
-    <span class="ver">v0.6</span>
+    <span class="ver">v0.7</span>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
@@ -324,11 +325,17 @@
     $('overlay').hidden = false;
     syncViewport();
     setTimeout(function () { $('sheetInput').focus(); }, 50);
+    // 鍵盤彈出是漸進動畫,期間多次對齊可視區域
+    [150, 350, 600, 1000].forEach(function (ms) {
+      setTimeout(syncViewport, ms);
+    });
   }
   function closeSheet() {
     sheetMode = null;
     editing = null;
     $('overlay').hidden = true;
+    $('overlay').style.top = '';
+    $('overlay').style.height = '';
     $('sheetInput').blur();
   }
 
@@ -395,11 +402,13 @@
     render();
   });
 
-  // 鍵盤彈出時讓彈窗貼在鍵盤上方,而不是被推走
+  // 鍵盤彈出時 Safari 會滾動並縮小可視區域;
+  // 彈窗的 top 和 height 都實時跟隨,保證貼在鍵盤上方不被推走
   function syncViewport() {
-    if (window.visualViewport && !$('overlay').hidden) {
-      $('overlay').style.height = window.visualViewport.height + 'px';
-    }
+    var vv = window.visualViewport;
+    if (!vv || $('overlay').hidden) return;
+    $('overlay').style.top = vv.offsetTop + 'px';
+    $('overlay').style.height = vv.height + 'px';
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncViewport);
