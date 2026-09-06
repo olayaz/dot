@@ -5,18 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#ffffff">
-<title>做到了</title>
+<meta name="theme-color" content="#fafbfc">
+<meta name="apple-mobile-web-app-title" content="Dot">
+<title>Dot</title>
 <style>
   :root {
-    --bg: #f6f5f2;
+    --bg: #fafbfc;
     --card: #ffffff;
-    --ink: #1c1c1e;
-    --ink-2: #8a8a8e;
-    --done: #34a853;
-    --line: #e8e6e1;
+    --ink: #393451;
+    --ink-2: #746780;
+    --done: #7964bb;
+    --line: #eeedf2;
+    --accent: #7253ac;
+    --lavender: #f1edf7;
+    --peach: #f8f1e9;
+    --peach-ink: #805032;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; }
   body {
     font-family: -apple-system, "PingFang TC", "PingFang SC", sans-serif;
@@ -25,217 +31,120 @@
     display: flex;
     flex-direction: column;
     height: 100dvh;
+    max-width: 600px;
+    margin: 0 auto;
   }
-
-  header {
-    padding: calc(env(safe-area-inset-top) + 12px) 16px 10px;
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, .entry:focus-visible, .date-label:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
   }
-  .date-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
+  header { padding: calc(env(safe-area-inset-top) + 22px) 24px 18px; }
+  .brand { display: flex; align-items: center; gap: 7px; margin: 0 0 24px; font-size: 24px; font-weight: 650; letter-spacing: -.8px; }
+  .brand::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--done); }
+  .date-nav { display: flex; align-items: center; justify-content: space-between; }
   .date-nav button {
     border: none;
-    background: none;
-    font-size: 26px;
-    color: var(--ink-2);
-    padding: 4px 14px;
-    cursor: pointer;
-  }
-  .date-label {
-    font-size: 18px;
-    font-weight: 600;
-    position: relative;
-    cursor: pointer;
-    text-align: center;
-  }
-  .date-label .sub { display: block; font-size: 12px; font-weight: 400; color: var(--ink-2); }
-  #datePicker { position: absolute; inset: 0; opacity: 0; width: 100%; }
-  .stats {
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--ink-2);
-    text-align: center;
-  }
-  .stats b { color: var(--ink); font-weight: 600; }
-
-  #list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px 12px 12px;
-  }
-  .empty {
-    text-align: center;
-    color: var(--ink-2);
-    font-size: 14px;
-    margin-top: 60px;
-    line-height: 1.8;
-  }
-  .card {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 0 14px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.04);
-  }
-  .entry {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--line);
-    cursor: pointer;
-  }
-  .entry:last-child { border-bottom: none; }
-  .entry:active { background: #fafaf8; }
-  .dot {
-    width: 12px; height: 12px;
     border-radius: 50%;
-    margin-top: 6px;
-    flex-shrink: 0;
+    background: var(--lavender);
+    font-size: 26px;
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
   }
+  .date-label { font-size: 23px; font-weight: 600; position: relative; cursor: pointer; text-align: center; }
+  .date-label .sub { display: block; margin-top: 5px; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+  #datePicker { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+  .stats { margin-top: 18px; font-size: 12px; color: var(--ink-2); text-align: center; }
+  .stats b { color: var(--ink); font-weight: 600; }
+  .legend { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
+  .legend .dot { width: 9px; height: 9px; margin: 0 0 0 12px; }
+  .legend .dot:first-child { margin-left: 0; }
+
+  #list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 20px 20px; }
+  .empty { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: clamp(32px, 12vh, 100px); line-height: 1.8; }
+  .empty::before { content: ''; display: block; width: 40px; height: 40px; margin: 0 auto 20px; border: 9px solid var(--lavender); border-radius: 50%; background: var(--peach); }
+  .card { background: var(--card); border-radius: 22px; padding: 0 16px; box-shadow: 0 4px 24px rgba(114,83,172,.04); }
+  .entry { display: flex; align-items: flex-start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .entry:last-child { border-bottom: none; }
+  .entry:active { background: var(--lavender); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
   .dot.done { background: var(--done); }
-  .dot.todo { background: transparent; border: 2px solid #c7c7cc; }
+  .dot.todo { background: transparent; border: 2px solid #b39473; }
   .body { flex: 1; min-width: 0; }
   .topline { display: flex; align-items: flex-start; gap: 8px; }
-  .text { flex: 1; font-size: 16px; line-height: 1.45; word-break: break-word; }
-  .time { font-size: 12px; color: var(--ink-2); margin-top: 3px; flex-shrink: 0; }
-  .note {
-    font-size: 14px;
-    color: var(--ink-2);
-    margin-top: 4px;
-    line-height: 1.4;
-    word-break: break-word;
-  }
-  .del {
-    border: none; background: none; color: #c7c7cc; font-size: 18px;
-    padding: 0 2px; cursor: pointer; flex-shrink: 0;
-  }
+  .text { flex: 1; font-size: 16px; line-height: 1.5; word-break: break-word; }
+  .time { font-size: 11px; color: var(--ink-2); margin-top: 4px; flex-shrink: 0; }
+  .note { font-size: 14px; color: var(--ink-2); margin-top: 7px; line-height: 1.6; word-break: break-word; }
+  .del { border: none; background: none; color: var(--ink-2); font-size: 18px; min-width: 32px; min-height: 32px; margin: -4px -8px 0 0; padding: 0; flex-shrink: 0; }
 
   /* 居中懸浮窗口:不錨定屏幕底部,鍵盤彈出時只需在剩餘可視區域重新居中,
      位移很小;top/height 由 JS 跟隨 visualViewport 設置 */
-  #overlay {
-    position: fixed;
-    left: 0; right: 0; top: 0;
-    height: 100dvh;
-    background: rgba(0,0,0,.25);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-  }
+  #overlay { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; background: rgba(65,47,91,.18); display: flex; align-items: center; justify-content: center; z-index: 10; }
   #overlay[hidden] { display: none; }
-  .sheet {
-    background: #fff;
-    width: min(330px, 86%);
-    border-radius: 14px;
-    padding: 18px 16px calc(env(safe-area-inset-bottom) + 16px);
-    box-shadow: 0 8px 30px rgba(0,0,0,.18);
-  }
-  .sheet-text {
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.4;
-    margin-bottom: 12px;
-    word-break: break-word;
-  }
-  #sheetInput {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 16px;
-    outline: none;
-  }
-  .sheet-btns { display: flex; gap: 8px; margin-top: 12px; }
-  .sheet-btns button {
-    flex: 1;
-    border: none;
-    border-radius: 10px;
-    padding: 12px 0;
-    font-size: 15px;
-    cursor: pointer;
-  }
-  #sheetCancel { background: #eceef1; color: var(--ink); }
-  #sheetOk { background: var(--ink); color: #fff; }
-  #sheetUndone {
-    display: block;
-    margin: 12px auto 0;
-    border: none;
-    background: none;
-    color: var(--ink-2);
-    font-size: 13px;
-    cursor: pointer;
-  }
+  .sheet { background: var(--card); width: min(360px, 88%); max-height: calc(100% - 24px); overflow-y: auto; border-radius: 24px; padding: 24px; box-shadow: 0 12px 48px rgba(65,47,91,.12); }
+  .sheet-text { font-size: 18px; font-weight: 600; line-height: 1.4; margin-bottom: 16px; word-break: break-word; }
+  #sheetInput { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 13px 12px; background: var(--bg); color: var(--ink); font-size: 16px; outline: none; }
+  #sheetInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--lavender); }
+  #sheetInput::placeholder { color: var(--ink-2); }
+  .sheet-feedback { min-height: 18px; margin-top: 10px; color: var(--accent); font-size: 12px; }
+  .sheet-btns { display: flex; gap: 10px; margin-top: 14px; }
+  .sheet-btns button { flex: 1; border: none; border-radius: 12px; padding: 13px 0; font-size: 15px; }
+  #sheetCancel { background: var(--lavender); color: var(--accent); }
+  #sheetOk { background: var(--accent); color: #fff; }
+  #sheetUndone { display: block; margin: 12px auto 0; padding: 10px; border: none; background: none; color: var(--ink-2); font-size: 13px; }
 
-  footer {
-    padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
-    border-top: 1px solid var(--line);
-  }
-  .add-btns { display: flex; gap: 8px; }
-  .add-btns button {
-    flex: 1;
-    border: none;
-    border-radius: 12px;
-    padding: 13px 0;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  #btnPlan { background: #eceef1; color: var(--ink); }
-  #btnDone { background: var(--ink); color: #fff; }
-  .tools {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-  }
-  .tools button {
-    border: none; background: none; color: var(--ink-2);
-    font-size: 12px; cursor: pointer; padding: 2px 8px;
-  }
-  .ver { font-size: 10px; color: #d1d1d6; }
+  footer { padding: 14px 20px calc(env(safe-area-inset-bottom) + 10px); }
+  .add-btns { display: flex; gap: 12px; }
+  .add-btns button { flex: 1; border: none; border-radius: 18px; padding: 17px 0; font-size: 16px; font-weight: 500; }
+  #btnPlan { background: var(--peach); color: var(--peach-ink); }
+  #btnDone { background: var(--lavender); color: var(--accent); }
+  .tools { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 8px; }
+  .tools button { border: none; background: none; color: var(--ink-2); font-size: 12px; padding: 10px 8px; }
 </style>
 </head>
 <body>
 
 <header>
+  <h1 class="brand">Dot</h1>
   <div class="date-nav">
     <button id="prevDay" aria-label="前一天">‹</button>
     <div class="date-label">
       <span id="dateText"></span>
       <span class="sub" id="weekText"></span>
-      <input type="date" id="datePicker">
+      <input type="date" id="datePicker" aria-label="選擇日期">
     </div>
     <button id="nextDay" aria-label="後一天">›</button>
   </div>
   <div class="stats" id="stats"></div>
+  <div class="legend"><span class="dot todo" aria-hidden="true"></span>未做<span class="dot done" aria-hidden="true"></span>已做</div>
 </header>
 
-<div id="list"></div>
+<main id="list" aria-label="當日記錄"></main>
 
 <footer>
   <div class="add-btns">
-    <button id="btnPlan">記為待做</button>
-    <button id="btnDone">做到了,記一筆</button>
+    <button id="btnPlan">寫計劃</button>
+    <button id="btnDone">寫記錄</button>
   </div>
   <div class="tools">
-    <button id="btnExport">導出備份</button>
-    <button id="btnImport">導入備份</button>
-    <span class="ver">v0.8</span>
+    <button id="btnExport">匯出備份</button>
+    <button id="btnImport">匯入備份</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 </footer>
 
 <div id="overlay" hidden>
-  <div class="sheet">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetText">
     <div class="sheet-text" id="sheetText"></div>
     <input id="sheetInput" type="text" enterkeyhint="done">
+    <div class="sheet-feedback" id="sheetFeedback" role="status"></div>
     <div class="sheet-btns">
       <button id="sheetCancel">取消</button>
-      <button id="sheetOk">記下</button>
+      <button id="sheetOk">儲存</button>
     </div>
-    <button id="sheetUndone" hidden>改回沒做</button>
+    <button id="sheetUndone" hidden>改為未做</button>
   </div>
 </div>
 
@@ -310,13 +219,6 @@
     for (var k in data) n += data[k].length;
     return n;
   }
-  function streak() {
-    var d = today();
-    if (!entries(d).length) d.setDate(d.getDate() - 1);
-    var n = 0;
-    while (entries(d).length) { n++; d.setDate(d.getDate() - 1); }
-    return n;
-  }
 
   // ---- 底部彈窗 ----
   // sheetMode: 'add-plan' | 'add-done' | 'edit'
@@ -324,6 +226,8 @@
   var editing = null; // { k, e }
 
   function showSheet() {
+    $('sheetFeedback').textContent = '';
+    $('sheetInput').setAttribute('aria-label', sheetMode === 'edit' ? '結果' : sheetMode === 'add-plan' ? '計劃內容' : '記錄內容');
     $('overlay').hidden = false;
     syncViewport();
     setTimeout(function () { $('sheetInput').focus(); }, 50);
@@ -341,11 +245,11 @@
   function openAddSheet(kind) {
     sheetMode = kind === 'plan' ? 'add-plan' : 'add-done';
     editing = null;
-    $('sheetText').textContent = kind === 'plan' ? '記為待做' : '做到了,記一筆';
+    $('sheetText').textContent = kind === 'plan' ? '寫計劃' : '寫記錄';
     $('sheetInput').value = '';
-    $('sheetInput').placeholder = kind === 'plan' ? '寫下待做的事' : '寫下做成的事';
-    $('sheetOk').textContent = '記下';
-    $('sheetCancel').textContent = '完成';
+    $('sheetInput').placeholder = kind === 'plan' ? '打算做什麼？' : '做了什麼，結果如何？';
+    $('sheetOk').textContent = '新增';
+    $('sheetCancel').textContent = '關閉';
     $('sheetUndone').hidden = true;
     scrollToBottom();
     showSheet();
@@ -357,8 +261,8 @@
     editing = { k: k, e: e };
     $('sheetText').textContent = e.text;
     $('sheetInput').value = e.note || '';
-    $('sheetInput').placeholder = '結果怎麼樣?一句話寫下來';
-    $('sheetOk').textContent = e.done ? '記下' : '做了,記下';
+    $('sheetInput').placeholder = '結果如何？';
+    $('sheetOk').textContent = '儲存';
     $('sheetCancel').textContent = '取消';
     $('sheetUndone').hidden = !e.done;
     showSheet();
@@ -379,8 +283,11 @@
     } else if (sheetMode) {
       // 記一條,清空,窗口不收起,可連續記;新行立刻出現在後面的列表裡
       if (addEntry(inp.value, sheetMode === 'add-done')) {
+        $('sheetFeedback').textContent = '已新增：' + inp.value.trim();
         inp.value = '';
         inp.focus();
+      } else {
+        $('sheetFeedback').textContent = '請先輸入內容';
       }
     }
   });
@@ -389,7 +296,8 @@
     if (ev.target === this) closeSheet();
   });
   $('sheetInput').addEventListener('keydown', function (ev) {
-    if (ev.key === 'Enter') $('sheetOk').click();
+    if (ev.key === 'Enter' && !ev.isComposing) $('sheetOk').click();
+    if (ev.key === 'Escape') closeSheet();
   });
   $('sheetUndone').addEventListener('click', function () {
     if (!editing) return;
@@ -426,11 +334,11 @@
     $('weekText').textContent = '星期' + WEEK[current.getDay()] + (isToday ? ' · 今天' : '');
     $('datePicker').value = dayKey(current);
 
-    $('stats').innerHTML = '今天 <b>' + entries(today()).length + '</b> 條 · 連續 <b>' + streak() + '</b> 天 · 累計 <b>' + totalCount() + '</b> 條';
+    $('stats').innerHTML = '當日 <b>' + entries(current).length + '</b> 則 · 共 <b>' + totalCount() + '</b> 則';
 
     var arr = entries(current);
     if (!arr.length) {
-      listEl.innerHTML = '<div class="empty">這一天還沒有記錄。<br>點下面的按鈕,記一筆吧。</div>';
+      listEl.innerHTML = '<div class="empty">這天還沒有記錄</div>';
       return;
     }
     var k = dayKey(current);
@@ -440,9 +348,11 @@
     arr.forEach(function (e) {
       var row = document.createElement('div');
       row.className = 'entry';
+      row.tabIndex = 0;
+      row.setAttribute('aria-label', (e.done ? '已做：' : '未做：') + e.text + '，編輯結果');
 
       // 只有「做了」才有時間可說:顯示標記完成的那一刻,同行末尾小灰字
-      var timeHtml = e.done ? '<span class="time">' + fmtTime(e.doneTs || e.ts) + '</span>' : '';
+      var timeHtml = e.done ? '<span class="time" title="記錄時間">' + fmtTime(e.doneTs || e.ts) + '</span>' : '';
 
       row.innerHTML =
         '<span class="dot ' + (e.done ? 'done' : 'todo') + '"></span>' +
@@ -453,9 +363,15 @@
         '<button class="del" aria-label="刪除">×</button>';
       row.querySelector('.text').textContent = e.text;
       var noteEl = row.querySelector('.note');
-      if (noteEl) noteEl.textContent = '→ ' + e.note;
+      if (noteEl) noteEl.textContent = e.note;
 
       row.addEventListener('click', function () { openEditSheet(k, e); });
+      row.addEventListener('keydown', function (ev) {
+        if (ev.target === row && (ev.key === 'Enter' || ev.key === ' ')) {
+          ev.preventDefault();
+          openEditSheet(k, e);
+        }
+      });
       row.querySelector('.del').addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (confirm('刪掉這一條?')) removeEntry(k, e.id);
@@ -500,13 +416,13 @@
       try {
         var imported = JSON.parse(r.result);
         if (typeof imported !== 'object' || imported === null) throw new Error();
-        if (!confirm('導入會覆蓋目前所有資料,確定嗎?(建議先導出備份)')) return;
+        if (!confirm('匯入會覆蓋目前所有資料,確定嗎?(建議先匯出備份)')) return;
         data = imported;
         save();
         render();
-        alert('導入成功');
+        alert('匯入成功');
       } catch (e) {
-        alert('文件格式不對,導入失敗');
+        alert('文件格式不對,匯入失敗');
       }
     };
     r.readAsText(f);
